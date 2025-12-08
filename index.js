@@ -52,7 +52,6 @@ async function run() {
     app.patch("/issues/:id", async (req, res) => {
       const { issueTitle, photo, district, region, number, information, area } =
         req.body;
-
       const { id } = req.params;
       const query = { _id: new ObjectId(id) };
       const updatedocs = {
@@ -67,6 +66,14 @@ async function run() {
         },
       };
       const result = await issuesCollection.updateOne(query, updatedocs);
+      res.send(result);
+    });
+
+    //delete issues
+    app.delete("/issues/:id", async (req, res) => {
+      const { id } = req.params;
+      const query = { _id: new ObjectId(id) };
+      const result = await issuesCollection.deleteOne(query);
       res.send(result);
     });
 
