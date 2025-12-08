@@ -25,6 +25,9 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
+    // Connect the client to the server	(optional starting in v4.7)
+    await client.connect();
+
     // database collecitons
 
     const cityFixDB = client.db("cityFixDB");
@@ -100,19 +103,28 @@ async function run() {
         line_items: [
           {
             // Provide the exact Price ID (for example, price_1234) of the product you want to sell
-            price: "{{PRICE_ID}}",
+            price_data: {
+              currency: "USD",
+              unit_amout: 10000,
+              product_data: {
+                name: paymentInfo.issueTitle,
+              },
+            },
             quantity: 1,
           },
         ],
+        customer_email: paymentInfo.email,
         mode: "payment",
+        metadata: {
+          issueId: paymentInfo.issueId,
+        },
         success_url: `${process.env.SITE_DOMAIN}/payment-success`,
+        cancel_url: `${process.env.SITE_DOMAIN}/payment-cancel`,
       });
-
-      res.redirect(303, session.url);
+      console.log(session);
+      res.send({ sessionUrl: session.url });
     });
 
-    // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
