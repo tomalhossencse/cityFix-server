@@ -2,6 +2,8 @@ const express = require("express");
 const app = express();
 const cors = require("cors");
 require("dotenv").config();
+const stripe = require("stripe")(process.env.STRIPE_SECRET);
+
 const port = process.env.PORT || 3000;
 
 // middleware
@@ -47,6 +49,12 @@ async function run() {
       const result = await issuesCollection.findOne(query);
       res.send(result);
     });
+    app.get("/payment/:id", async (req, res) => {
+      const { id } = req.params;
+      const query = { _id: new ObjectId(id) };
+      const result = await issuesCollection.findOne(query);
+      res.send(result);
+    });
     // update issues
 
     app.patch("/issues/:id", async (req, res) => {
@@ -83,6 +91,26 @@ async function run() {
       const result = await districtbyRegionCollection.find().toArray();
       res.send(result);
     });
+
+    // payment related api
+
+    app.post("/create-checkout-session", async (req, res) => {
+      const paymentInfo = req.body;
+      const session = await stripe.checkout.sessions.create({
+        line_items: [
+          {
+            // Provide the exact Price ID (for example, price_1234) of the product you want to sell
+            price: "{{PRICE_ID}}",
+            quantity: 1,
+          },
+        ],
+        mode: "payment",
+        success_url: `${process.env.SITE_DOMAIN}/payment-success`,
+      });
+
+      res.redirect(303, session.url);
+    });
+
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
     // Send a ping to confirm a successful connection
