@@ -107,7 +107,7 @@ async function run() {
               currency: "bdt",
               unit_amount: 10000,
               product_data: {
-                name: paymentInfo.issueTitle,
+                name: `Please Pay for ${paymentInfo.issueTitle}`,
               },
             },
             quantity: 1,
@@ -119,11 +119,11 @@ async function run() {
           issueId: paymentInfo.issueId,
           issueTitle: paymentInfo.issueTitle,
         },
-        success_url: `${process.env.SITE_DOMAIN}/payment-success`,
+        success_url: `${process.env.SITE_DOMAIN}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${process.env.SITE_DOMAIN}/payment-cancel`,
       });
       console.log(session);
-      res.send({ sessionUrl: session.url });
+      res.send({ url: session.url });
     });
 
     // Send a ping to confirm a successful connection
