@@ -104,8 +104,8 @@ async function run() {
           {
             // Provide the exact Price ID (for example, price_1234) of the product you want to sell
             price_data: {
-              currency: "USD",
-              unit_amout: 10000,
+              currency: "bdt",
+              unit_amount: 10000,
               product_data: {
                 name: paymentInfo.issueTitle,
               },
@@ -117,6 +117,7 @@ async function run() {
         mode: "payment",
         metadata: {
           issueId: paymentInfo.issueId,
+          issueTitle: paymentInfo.issueTitle,
         },
         success_url: `${process.env.SITE_DOMAIN}/payment-success`,
         cancel_url: `${process.env.SITE_DOMAIN}/payment-cancel`,
