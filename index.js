@@ -47,6 +47,28 @@ async function run() {
       const result = await issuesCollection.findOne(query);
       res.send(result);
     });
+    // update issues
+
+    app.patch("/issues/:id", async (req, res) => {
+      const { issueTitle, photo, district, region, number, information, area } =
+        req.body;
+
+      const { id } = req.params;
+      const query = { _id: new ObjectId(id) };
+      const updatedocs = {
+        $set: {
+          issueTitle,
+          photo,
+          district,
+          region,
+          number,
+          information,
+          area,
+        },
+      };
+      const result = await issuesCollection.updateOne(query, updatedocs);
+      res.send(result);
+    });
 
     // district by region apis
 
