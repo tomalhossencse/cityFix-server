@@ -4,7 +4,7 @@ const cors = require("cors");
 require("dotenv").config();
 const stripe = require("stripe")(process.env.STRIPE_SECRET);
 
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 5000;
 
 // middleware
 app.use(express.json());
@@ -33,6 +33,7 @@ async function run() {
     const cityFixDB = client.db("cityFixDB");
     const issuesCollection = cityFixDB.collection("issues");
     const districtbyRegionCollection = cityFixDB.collection("districtbyRegion");
+    const paymentCollection = cityFixDB.collection("payments");
 
     // issue related apis
     app.post("/issues", async (req, res) => {
@@ -42,7 +43,13 @@ async function run() {
     });
 
     app.get("/issues", async (req, res) => {
-      const result = await issuesCollection.find().toArray();
+      const query = {};
+      const { email } = req.query;
+      if (email) {
+        query.email = email;
+      }
+      const options = { sort: { createAt: -1 } };
+      const result = await issuesCollection.find(query, options).toArray();
       res.send(result);
     });
     // get single issues data
@@ -118,6 +125,8 @@ async function run() {
         metadata: {
           issueId: paymentInfo.issueId,
           issueTitle: paymentInfo.issueTitle,
+          issueTitle: paymentInfo.issueTitle,
+          trackingId: paymentInfo.trackingId,
         },
         success_url: `${process.env.SITE_DOMAIN}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${process.env.SITE_DOMAIN}/payment-cancel`,
@@ -140,7 +149,27 @@ async function run() {
           },
         };
         const result = await issuesCollection.updateOne(query, update);
-        res.send(result);
+
+        const payment = {
+          amount: session.amount_total / 100,
+          currency: session.currency,
+          customer_email: session.customer_email,
+          issueId: session.metadata.issueId,
+          issueTitle: session.metadata.issueTitle,
+          trackingId: session.metadata.trackingId,
+          transactionId: session.payment_intent,
+          paymentStatus: session.payment_status,
+          paidAt: new Date(),
+        };
+
+        if (session.payment_status === "paid") {
+          const resultPayment = await paymentCollection.insertOne(payment);
+          res.send({
+            success: true,
+            modifyStatus: result,
+            paymentInfo: resultPayment,
+          });
+        }
       }
       // console.log("session retrieve ", session);
       res.send({ success: false });
