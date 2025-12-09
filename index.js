@@ -138,6 +138,7 @@ async function run() {
           issueTitle: paymentInfo.issueTitle,
           issueTitle: paymentInfo.issueTitle,
           trackingId: paymentInfo.trackingId,
+          displayName: paymentInfo.displayName,
         },
         success_url: `${process.env.SITE_DOMAIN}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${process.env.SITE_DOMAIN}/payment-cancel`,
@@ -157,6 +158,18 @@ async function run() {
           $set: {
             paymentStatus: "paid",
             priority: "high",
+            timeline: [
+              {
+                status: "pending",
+                message: "Issue Boosted",
+                updatedBy: {
+                  role: "citizen",
+                  name: session.displayName,
+                  email: session.customer_email,
+                },
+                createdAt: new Date(),
+              },
+            ],
           },
         };
         const result = await issuesCollection.updateOne(query, update);
