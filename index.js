@@ -151,6 +151,16 @@ async function run() {
       const sessionId = req.query.session_id;
       // console.log(sessionId);
       const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+      // for fixing duplicate payment
+      const transactionId = session.payment_intent;
+      const existingPayment = await paymentCollection.findOne({
+        transactionId,
+      });
+      if (existingPayment) {
+        return res.send({ success: true, message: "Already paid" });
+      }
+
       if (session.payment_status === "paid") {
         const id = session.metadata.issueId;
         const query = { _id: new ObjectId(id) };
@@ -158,21 +168,24 @@ async function run() {
           $set: {
             paymentStatus: "paid",
             priority: "high",
-            timeline: [
-              {
-                status: "pending",
-                message: "Issue Boosted",
-                updatedBy: {
-                  role: "citizen",
-                  name: session.displayName,
-                  email: session.customer_email,
-                },
-                createdAt: new Date(),
+          },
+          $push: {
+            timeline: {
+              status: "pending",
+              message: "Issue Boosted",
+              updatedBy: {
+                role: "citizen",
+                name: session.metadata.displayName,
+                email: session.customer_email,
               },
-            ],
+              createdAt: new Date(),
+            },
           },
         };
-        const result = await issuesCollection.updateOne(query, update);
+        const result = await issuesCollection.updateOne(
+          { ...query, paymentStatus: { $ne: "paid" } },
+          update
+        );
 
         const payment = {
           amount: session.amount_total / 100,
@@ -186,17 +199,15 @@ async function run() {
           paidAt: new Date(),
         };
 
-        if (session.payment_status === "paid") {
-          const resultPayment = await paymentCollection.insertOne(payment);
-          res.send({
-            success: true,
-            modifyStatus: result,
-            paymentInfo: resultPayment,
-          });
-        }
+        const resultPayment = await paymentCollection.insertOne(payment);
+        return res.send({
+          success: true,
+          modifyStatus: result,
+          paymentInfo: resultPayment,
+        });
       }
       // console.log("session retrieve ", session);
-      res.send({ success: false });
+      return res.send({ success: false });
     });
 
     // Send a ping to confirm a successful connection
