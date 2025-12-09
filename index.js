@@ -34,6 +34,7 @@ async function run() {
     const issuesCollection = cityFixDB.collection("issues");
     const districtbyRegionCollection = cityFixDB.collection("districtbyRegion");
     const paymentCollection = cityFixDB.collection("payments");
+    const usersCollection = cityFixDB.collection("users");
 
     // issue related apis
     app.post("/issues", async (req, res) => {
@@ -99,6 +100,16 @@ async function run() {
 
     app.get("/districtbyRegion", async (req, res) => {
       const result = await districtbyRegionCollection.find().toArray();
+      res.send(result);
+    });
+
+    // user related apis
+
+    app.post("/users", async (req, res) => {
+      const user = req.body;
+      const existingUser = await usersCollection.findOne({ email: user.email });
+      if (existingUser) return;
+      const result = await usersCollection.insertOne(user);
       res.send(result);
     });
 
