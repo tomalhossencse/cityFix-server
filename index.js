@@ -34,6 +34,7 @@ async function run() {
     const issuesCollection = cityFixDB.collection("issues");
     const districtbyRegionCollection = cityFixDB.collection("districtbyRegion");
     const paymentCollection = cityFixDB.collection("payments");
+    const PremuimUsersCollection = cityFixDB.collection("premuimUsers");
     const usersCollection = cityFixDB.collection("users");
 
     // issue related apis
@@ -182,6 +183,37 @@ async function run() {
       res.send({ url: session.url });
     });
 
+    app.post("/premium-checkout-session", async (req, res) => {
+      const boostInfo = req.body;
+      const session = await stripe.checkout.sessions.create({
+        line_items: [
+          {
+            // Provide the exact Price ID (for example, price_1234) of the product you want to sell
+            price_data: {
+              currency: "bdt",
+              unit_amount: 100000,
+              product_data: {
+                name: `Please Pay to make  ${boostInfo.displayName} Premuim User`,
+              },
+            },
+            quantity: 1,
+          },
+        ],
+        customer_email: boostInfo.email,
+        mode: "payment",
+        metadata: {
+          userId: boostInfo.userId,
+          isSubscribed: boostInfo.isSubscribed,
+          planType: boostInfo.planType,
+          displayName: boostInfo.displayName,
+        },
+        success_url: `${process.env.SITE_DOMAIN}/premuim-success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${process.env.SITE_DOMAIN}/premuim-cancel`,
+      });
+      // console.log(session);
+      res.send({ url: session.url });
+    });
+
     app.patch("/payment-success", async (req, res) => {
       const sessionId = req.query.session_id;
       // console.log(sessionId);
@@ -236,6 +268,60 @@ async function run() {
         };
 
         const resultPayment = await paymentCollection.insertOne(payment);
+        return res.send({
+          success: true,
+          modifyStatus: result,
+          paymentInfo: resultPayment,
+        });
+      }
+      // console.log("session retrieve ", session);
+      return res.send({ success: false });
+    });
+
+    app.patch("/premuim-success", async (req, res) => {
+      const sessionId = req.query.session_id;
+      // console.log(sessionId);
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+      // for fixing duplicate payment
+      const transactionId = session.payment_intent;
+      const premuimUsers = await PremuimUsersCollection.findOne({
+        transactionId,
+      });
+      if (premuimUsers) {
+        return res.send({ success: true, message: "Already Premuim" });
+      }
+
+      if (session.payment_status === "paid") {
+        const id = session.metadata.userId;
+        const query = { _id: new ObjectId(id) };
+        const update = {
+          $set: {
+            isSubscribed: true,
+            planType: "premuim",
+            transactionId: session.payment_intent,
+            paymentStatus: session.payment_status,
+            paidAt: new Date(),
+          },
+        };
+
+        const result = await usersCollection.updateOne(
+          { ...query, isSubscribed: { $ne: true } },
+          update
+        );
+
+        const payment = {
+          amount: session.amount_total / 100,
+          currency: session.currency,
+          email: session.customer_email,
+          userId: session.metadata.userId,
+          displayName: session.metadata.displayName,
+          transactionId: session.payment_intent,
+          paymentStatus: session.payment_status,
+          paidAt: new Date(),
+        };
+
+        const resultPayment = await PremuimUsersCollection.insertOne(payment);
         return res.send({
           success: true,
           modifyStatus: result,
