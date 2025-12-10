@@ -49,8 +49,10 @@ async function run() {
       if (email) {
         query.email = email;
       }
-      const options = { sort: { createAt: -1 } };
-      const result = await issuesCollection.find(query, options).toArray();
+      const result = await issuesCollection
+        .find(query)
+        .sort({ priority: 1, createAt: -1 })
+        .toArray();
       res.send(result);
     });
 
@@ -135,7 +137,7 @@ async function run() {
           accountStatus,
         },
       };
-      const result = await issuesCollection.updateOne(query, updatedocs);
+      const result = await usersCollection.updateOne(query, updatedocs);
       res.send(result);
     });
 
