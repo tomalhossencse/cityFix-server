@@ -127,6 +127,13 @@ async function run() {
       const result = await usersCollection.find().skip(1).toArray();
       res.send(result);
     });
+    // get single user
+    app.get("/users/:email", async (req, res) => {
+      const { email } = req.params;
+      query = { email };
+      const result = await usersCollection.findOne(query);
+      res.send(result);
+    });
 
     app.patch("/users/:id", async (req, res) => {
       const { accountStatus } = req.body;
