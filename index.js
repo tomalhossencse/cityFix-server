@@ -53,6 +53,14 @@ async function run() {
       const result = await issuesCollection.find(query, options).toArray();
       res.send(result);
     });
+
+    app.get("/allIssues", async (req, res) => {
+      const result = await issuesCollection
+        .find()
+        .sort({ priority: 1 })
+        .toArray();
+      res.send(result);
+    });
     // get single issues data
     app.get("/issues/:id", async (req, res) => {
       const { id } = req.params;
@@ -110,6 +118,24 @@ async function run() {
       const existingUser = await usersCollection.findOne({ email: user.email });
       if (existingUser) return;
       const result = await usersCollection.insertOne(user);
+      res.send(result);
+    });
+
+    app.get("/users", async (req, res) => {
+      const result = await usersCollection.find().skip(1).toArray();
+      res.send(result);
+    });
+
+    app.patch("/users/:id", async (req, res) => {
+      const { accountStatus } = req.body;
+      const { id } = req.params;
+      const query = { _id: new ObjectId(id) };
+      const updatedocs = {
+        $set: {
+          accountStatus,
+        },
+      };
+      const result = await issuesCollection.updateOne(query, updatedocs);
       res.send(result);
     });
 
