@@ -182,6 +182,7 @@ async function run() {
             },
           },
         };
+
         const result = await issuesCollection.updateOne(
           { ...query, paymentStatus: { $ne: "paid" } },
           update
