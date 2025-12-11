@@ -6,9 +6,37 @@ const stripe = require("stripe")(process.env.STRIPE_SECRET);
 
 const port = process.env.PORT || 5000;
 
+// firebase admin
+
+const admin = require("firebase-admin");
+
+const serviceAccount = require("./firebase_key.json");
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+});
+
 // middleware
 app.use(express.json());
 app.use(cors());
+
+const verifyFBToken = async (req, res, next) => {
+  const token = req.headers.authorization;
+
+  if (!token) {
+    return res.status(401).send({ message: "unauthorized access" });
+  }
+
+  try {
+    const idToken = token.split(" ")[1];
+    const decode = await admin.auth().verifyIdToken(idToken);
+    req.decode_email = decode.email;
+    // console.log("decode in the token", decode);
+  } catch (error) {
+    return res.status(401).send({ message: "unauthorized access" });
+  }
+  next();
+};
 
 //mongodb
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
@@ -45,14 +73,17 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/issues", async (req, res) => {
+    app.get("/issues", verifyFBToken, async (req, res) => {
       const query = {};
       const { email } = req.query;
       if (email) {
         query.email = email;
+        if (email !== req.decode_email) {
+          return res.status(403).send({ message: "Forbidden access" });
+        }
       }
       const result = await issuesCollection
-        .find(query)
+        .find()
         .sort({ priority: 1, createAt: -1 })
         .toArray();
       res.send(result);
@@ -163,6 +194,7 @@ async function run() {
     });
 
     app.get("/sttafs", async (req, res) => {
+      console.log(req.headers);
       const result = await sttafsCollection.find().toArray();
       res.send(result);
     });
