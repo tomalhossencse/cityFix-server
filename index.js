@@ -73,7 +73,14 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/issues", verifyFBToken, async (req, res) => {
+    app.get("/issues", async (req, res) => {
+      const result = await issuesCollection
+        .find()
+        .sort({ priority: 1, createAt: -1 })
+        .toArray();
+      res.send(result);
+    });
+    app.get("/my-issues", verifyFBToken, async (req, res) => {
       const query = {};
       const { email } = req.query;
       if (email) {
