@@ -162,6 +162,11 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/sttafs", async (req, res) => {
+      const result = await sttafsCollection.find().toArray();
+      res.send(result);
+    });
+
     // payment related api
 
     app.post("/create-checkout-session", async (req, res) => {
