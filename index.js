@@ -174,6 +174,25 @@ async function run() {
       res.send(result);
     });
 
+    app.patch("/sttafs/:id", async (req, res) => {
+      const { information, area, district, region, number, category } =
+        req.body;
+      const { id } = req.params;
+      const query = { _id: new ObjectId(id) };
+      const updatedocs = {
+        $set: {
+          information,
+          area,
+          district,
+          region,
+          number,
+          category,
+        },
+      };
+      const result = await sttafsCollection.updateOne(query, updatedocs);
+      res.send(result);
+    });
+
     // payment related api
 
     app.post("/create-checkout-session", async (req, res) => {
