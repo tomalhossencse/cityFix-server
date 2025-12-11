@@ -36,6 +36,7 @@ async function run() {
     const paymentCollection = cityFixDB.collection("payments");
     const PremuimUsersCollection = cityFixDB.collection("premuimUsers");
     const usersCollection = cityFixDB.collection("users");
+    const sttafsCollection = cityFixDB.collection("sttafs");
 
     // issue related apis
     app.post("/issues", async (req, res) => {
@@ -146,6 +147,18 @@ async function run() {
         },
       };
       const result = await usersCollection.updateOne(query, updatedocs);
+      res.send(result);
+    });
+
+    // sttafs related apis
+
+    app.post("/sttafs", async (req, res) => {
+      const sttaf = req.body;
+      const existingSttaf = await sttafsCollection.findOne({
+        email: sttaf.email,
+      });
+      if (existingSttaf) return;
+      const result = await sttafsCollection.insertOne(sttaf);
       res.send(result);
     });
 
