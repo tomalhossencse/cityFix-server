@@ -167,6 +167,13 @@ async function run() {
       res.send(result);
     });
 
+    app.delete("/sttafs/:id", async (req, res) => {
+      const { id } = req.params;
+      const query = { _id: new ObjectId(id) };
+      const result = await sttafsCollection.deleteOne(query);
+      res.send(result);
+    });
+
     // payment related api
 
     app.post("/create-checkout-session", async (req, res) => {
