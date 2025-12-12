@@ -80,6 +80,24 @@ async function run() {
         .toArray();
       res.send(result);
     });
+
+    // get issues assigned stuffs
+    app.get("/issues/sttafs", async (req, res) => {
+      const { email, status } = req.query;
+      const query = {};
+      if (email) {
+        query["assignedStaff.staffEmail"] = email;
+      }
+      if (status) {
+        query.status = { $ne: "closed" };
+      } else {
+        query.status = status;
+      }
+
+      const result = await issuesCollection.find(query).toArray();
+      res.send(result);
+    });
+
     app.get("/my-issues", verifyFBToken, async (req, res) => {
       const query = {};
       const { email } = req.query;
@@ -90,7 +108,7 @@ async function run() {
         }
       }
       const result = await issuesCollection
-        .find()
+        .find(query)
         .sort({ priority: 1, createAt: -1 })
         .toArray();
       res.send(result);
@@ -103,6 +121,7 @@ async function run() {
         .toArray();
       res.send(result);
     });
+
     // get single issues data
     app.get("/issues/:id", async (req, res) => {
       const { id } = req.params;
@@ -110,6 +129,7 @@ async function run() {
       const result = await issuesCollection.findOne(query);
       res.send(result);
     });
+
     app.get("/payment/:id", async (req, res) => {
       const { id } = req.params;
       const query = { _id: new ObjectId(id) };
@@ -146,6 +166,35 @@ async function run() {
       res.send(result);
     });
 
+    // update issue timeLine
+
+    app.patch("/issues/:id/timeline", verifyFBToken, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const { assignedStaff, status, message, role } = req.body;
+      const timeline = {
+        status: status,
+        message: message,
+        updatedBy: {
+          role: role,
+          email: req.decode_email,
+        },
+        createdAt: new Date(),
+      };
+
+      const updateDoc = {
+        $set: {
+          assignedStaff,
+          status,
+        },
+        $push: { timeline },
+      };
+
+      const result = await issuesCollection.updateOne(query, updateDoc);
+
+      res.send(result);
+    });
+
     // district by region apis
 
     app.get("/districtbyRegion", async (req, res) => {
@@ -173,6 +222,12 @@ async function run() {
       query = { email };
       const result = await usersCollection.findOne(query);
       res.send(result);
+    });
+    app.get("/users/:email/role", async (req, res) => {
+      const { email } = req.params;
+      query = { email };
+      const user = await usersCollection.findOne(query);
+      res.send({ role: user?.role });
     });
 
     app.patch("/users/:id", async (req, res) => {
@@ -230,6 +285,58 @@ async function run() {
       };
       const result = await sttafsCollection.updateOne(query, updatedocs);
       res.send(result);
+    });
+
+    // workstatus update
+    app.patch("/sttafs/:id/workStatus", async (req, res) => {
+      const { workStatus } = req.body;
+      const { id } = req.params;
+      const query = { _id: new ObjectId(id) };
+      const updatedocs = {
+        $set: {
+          workStatus,
+        },
+      };
+      const result = await sttafsCollection.updateOne(query, updatedocs);
+      res.send(result);
+    });
+
+    app.get("/sttafs-filter", async (req, res) => {
+      const { workStatus, region, district } = req.query;
+      const query = {};
+
+      if (workStatus) {
+        query.workStatus = workStatus;
+      }
+      if (region) {
+        query.region = region;
+      }
+
+      if (workStatus) {
+        query.district = district;
+      }
+
+      const result = await sttafsCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    // sttaf create
+
+    app.post("/create-staff-auth", async (req, res) => {
+      const { email, password, displayName, photoURL } = req.body;
+
+      try {
+        const userRecord = await admin.auth().createUser({
+          email,
+          password,
+          displayName,
+          photoURL,
+        });
+
+        res.send({ uid: userRecord.uid });
+      } catch (error) {
+        res.status(400).send({ error: error.message });
+      }
     });
 
     // payment related api
