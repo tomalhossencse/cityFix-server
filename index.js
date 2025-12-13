@@ -321,8 +321,21 @@ async function run() {
       res.send(result);
     });
     // upvote related apis
+
+    app.post("/users", async (req, res) => {
+      const user = req.body;
+      const existingUser = await usersCollection.findOne({ email: user.email });
+      if (existingUser) return;
+      const result = await usersCollection.insertOne(user);
+      res.send(result);
+    });
     app.post("/upvotes", async (req, res) => {
       const upvote = req.body;
+      const existingUser = await upvotesCollection.findOne({
+        issueId: upvote.issueId,
+        citzenEmail: upvote.citzenEmail,
+      });
+      if (existingUser) return;
       const result = await upvotesCollection.insertOne(upvote);
       res.send(result);
     });
