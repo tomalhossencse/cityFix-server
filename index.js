@@ -224,6 +224,7 @@ async function run() {
       const result = await usersCollection.findOne(query);
       res.send(result);
     });
+
     app.get("/users/:email/role", async (req, res) => {
       const { email } = req.params;
       query = { email };
@@ -322,13 +323,6 @@ async function run() {
     });
     // upvote related apis
 
-    app.post("/users", async (req, res) => {
-      const user = req.body;
-      const existingUser = await usersCollection.findOne({ email: user.email });
-      if (existingUser) return;
-      const result = await usersCollection.insertOne(user);
-      res.send(result);
-    });
     app.post("/upvotes", async (req, res) => {
       const upvote = req.body;
       const existingUser = await upvotesCollection.findOne({
@@ -363,6 +357,59 @@ async function run() {
         res.send({ uid: userRecord.uid });
       } catch (error) {
         res.status(400).send({ error: error.message });
+      }
+    });
+
+    // dashboard related apis
+
+    app.get("/dashboard/stats", async (req, res) => {
+      try {
+        const email = req.query.email;
+
+        const totalIssues = await issuesCollection.countDocuments({ email });
+
+        const pendingIssues = await issuesCollection.countDocuments({
+          email,
+          status: "pending",
+        });
+
+        const procesingIssues = await issuesCollection.countDocuments({
+          email,
+          status: "in-progress",
+        });
+        const workingIssues = await issuesCollection.countDocuments({
+          email,
+          status: "working",
+        });
+
+        const reslovedIssues = await issuesCollection.countDocuments({
+          email,
+          status: "resolved",
+        });
+
+        const closedIssues = await issuesCollection.countDocuments({
+          email,
+          status: "closed",
+        });
+
+        const rejectedIssues = await issuesCollection.countDocuments({
+          email,
+          status: "rejected",
+        });
+
+        res.send({
+          issues: {
+            total: totalIssues,
+            pending: pendingIssues,
+            procesing: procesingIssues,
+            working: workingIssues,
+            resloved: reslovedIssues,
+            closed: closedIssues,
+            rejected: rejectedIssues,
+          },
+        });
+      } catch (error) {
+        res.status(500).send({ message: "Dashboard data failed" });
       }
     });
 
