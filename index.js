@@ -92,7 +92,10 @@ async function run() {
         query.status = status;
       }
 
-      const result = await issuesCollection.find(query).toArray();
+      const result = await issuesCollection
+        .find(query)
+        .sort({ priority: 1, createAt: -1 })
+        .toArray();
       res.send(result);
     });
 
@@ -315,9 +318,7 @@ async function run() {
         query.district = district;
       }
 
-      const result = await sttafsCollection
-        .find({ ...query, priority: 1 })
-        .toArray();
+      const result = await sttafsCollection.find(query).toArray();
       res.send(result);
     });
     // upvote related apis
