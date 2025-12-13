@@ -65,6 +65,7 @@ async function run() {
     const PremuimUsersCollection = cityFixDB.collection("premuimUsers");
     const usersCollection = cityFixDB.collection("users");
     const sttafsCollection = cityFixDB.collection("sttafs");
+    const upvotesCollection = cityFixDB.collection("upvotes");
 
     // issue related apis
     app.post("/issues", async (req, res) => {
@@ -317,6 +318,19 @@ async function run() {
       }
 
       const result = await sttafsCollection.find(query).toArray();
+      res.send(result);
+    });
+    // upvote related apis
+    app.post("/upvotes", async (req, res) => {
+      const upvote = req.body;
+      const result = await upvotesCollection.insertOne(upvote);
+      res.send(result);
+    });
+
+    app.get("/upvotes/:issueId", async (req, res) => {
+      const { issueId } = req.params;
+      const query = { issueId };
+      const result = await upvotesCollection.find(query).toArray();
       res.send(result);
     });
 
