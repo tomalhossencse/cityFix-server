@@ -88,9 +88,6 @@ async function run() {
       const query = {};
       if (email) {
         query["assignedStaff.staffEmail"] = email;
-      }
-      if (status) {
-        query.status = { $ne: "closed" };
       } else {
         query.status = status;
       }
@@ -118,7 +115,7 @@ async function run() {
     app.get("/allIssues", async (req, res) => {
       const result = await issuesCollection
         .find()
-        .sort({ priority: 1 })
+        .sort({ priority: 1, createAt: -1 })
         .toArray();
       res.send(result);
     });
@@ -290,26 +287,26 @@ async function run() {
     });
 
     // workstatus update
-    app.patch("/sttafs/:id/workStatus", async (req, res) => {
-      const { workStatus } = req.body;
-      const { id } = req.params;
-      const query = { _id: new ObjectId(id) };
-      const updatedocs = {
-        $set: {
-          workStatus,
-        },
-      };
-      const result = await sttafsCollection.updateOne(query, updatedocs);
-      res.send(result);
-    });
+    // app.patch("/sttafs/:id/workStatus", async (req, res) => {
+    //   const { workStatus } = req.body;
+    //   const { id } = req.params;
+    //   const query = { _id: new ObjectId(id) };
+    //   const updatedocs = {
+    //     $set: {
+    //       workStatus,
+    //     },
+    //   };
+    //   const result = await sttafsCollection.updateOne(query, updatedocs);
+    //   res.send(result);
+    // });
 
     app.get("/sttafs-filter", async (req, res) => {
-      const { workStatus, region, district } = req.query;
+      const { region, district } = req.query;
       const query = {};
 
-      if (workStatus) {
-        query.workStatus = workStatus;
-      }
+      // if (workStatus) {
+      //   query.workStatus = workStatus;
+      // }
       if (region) {
         query.region = region;
       }
@@ -318,7 +315,9 @@ async function run() {
         query.district = district;
       }
 
-      const result = await sttafsCollection.find(query).toArray();
+      const result = await sttafsCollection
+        .find({ ...query, priority: 1 })
+        .toArray();
       res.send(result);
     });
     // upvote related apis
