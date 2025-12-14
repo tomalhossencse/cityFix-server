@@ -75,11 +75,28 @@ async function run() {
     });
 
     app.get("/issues", async (req, res) => {
-      const result = await issuesCollection
-        .find()
-        .sort({ priority: 1, createAt: -1 })
-        .toArray();
-      res.send(result);
+      try {
+        const { status, priority, search, email } = req.query;
+        const query = {};
+
+        if (status) query.status = status;
+
+        if (priority) query.priority = priority;
+
+        if (email) query.email = email;
+
+        if (search) {
+          query.title = { $regex: search, $options: "i" };
+        }
+
+        const result = await issuesCollection
+          .find(quer)
+          .sort({ priority: 1, createAt: -1 })
+          .toArray();
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ message: "Server error" });
+      }
     });
 
     // get issues assigned stuffs
