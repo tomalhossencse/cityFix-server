@@ -114,19 +114,29 @@ async function run() {
     });
 
     app.get("/my-issues", verifyFBToken, async (req, res) => {
-      const query = {};
-      const { email } = req.query;
-      if (email) {
-        query.email = email;
-        if (email !== req.decode_email) {
-          return res.status(403).send({ message: "Forbidden access" });
+      try {
+        const query = {};
+        const { status, priority, email, category } = req.query;
+        if (email) {
+          query.email = email;
+          if (status) query.status = status;
+
+          if (priority) query.priority = priority;
+
+          if (category) query.category = category;
+
+          if (email !== req.decode_email) {
+            return res.status(403).send({ message: "Forbidden access" });
+          }
         }
+        const result = await issuesCollection
+          .find(query)
+          .sort({ priority: 1, createAt: -1 })
+          .toArray();
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ message: "Server error" });
       }
-      const result = await issuesCollection
-        .find(query)
-        .sort({ priority: 1, createAt: -1 })
-        .toArray();
-      res.send(result);
     });
 
     app.get("/allIssues", async (req, res) => {
