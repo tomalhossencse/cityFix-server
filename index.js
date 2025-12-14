@@ -76,21 +76,18 @@ async function run() {
 
     app.get("/issues", async (req, res) => {
       try {
-        const { status, priority, search, email } = req.query;
+        const { status, priority, search } = req.query;
         const query = {};
+        if (search) {
+          query.issueTitle = { $regex: search, $options: "i" };
+        }
 
         if (status) query.status = status;
 
         if (priority) query.priority = priority;
 
-        if (email) query.email = email;
-
-        if (search) {
-          query.title = { $regex: search, $options: "i" };
-        }
-
         const result = await issuesCollection
-          .find(quer)
+          .find(query)
           .sort({ priority: 1, createAt: -1 })
           .toArray();
         res.send(result);
@@ -321,17 +318,17 @@ async function run() {
     // });
 
     app.get("/sttafs-filter", async (req, res) => {
-      const { region, district } = req.query;
+      const { region, district, category } = req.query;
       const query = {};
 
-      // if (workStatus) {
-      //   query.workStatus = workStatus;
-      // }
+      if (category) {
+        query.category = category;
+      }
       if (region) {
         query.region = region;
       }
 
-      if (workStatus) {
+      if (district) {
         query.district = district;
       }
 
