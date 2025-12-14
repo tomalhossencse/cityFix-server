@@ -76,15 +76,21 @@ async function run() {
 
     app.get("/issues", async (req, res) => {
       try {
-        const { status, priority, search } = req.query;
         const query = {};
+        const { status, priority, category, search } = req.query;
         if (search) {
-          query.issueTitle = { $regex: search, $options: "i" };
+          query.$or = [
+            { issueTitle: { $regex: search, $options: "i" } },
+            { category: { $regex: search, $options: "i" } },
+            { region: { $regex: search, $options: "i" } },
+            { district: { $regex: search, $options: "i" } },
+          ];
         }
 
         if (status) query.status = status;
 
         if (priority) query.priority = priority;
+        if (category) query.category = category;
 
         const result = await issuesCollection
           .find(query)
