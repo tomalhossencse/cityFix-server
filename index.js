@@ -232,11 +232,22 @@ async function run() {
       res.send(result);
     });
     // get single user
+
     app.get("/users/:email", async (req, res) => {
-      const { email } = req.params;
-      query = { email };
-      const result = await usersCollection.findOne(query);
-      res.send(result);
+      try {
+        const { email } = req.params;
+        const query = { email };
+        const result = await usersCollection.findOne(query);
+
+        if (!result) {
+          return res.status(404).send({ message: "User not found" });
+        }
+
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Server Error" });
+      }
     });
 
     app.get("/users/:email/role", async (req, res) => {
@@ -272,7 +283,6 @@ async function run() {
     });
 
     app.get("/sttafs", async (req, res) => {
-      console.log(req.headers);
       const result = await sttafsCollection.find().toArray();
       res.send(result);
     });
@@ -302,20 +312,6 @@ async function run() {
       const result = await sttafsCollection.updateOne(query, updatedocs);
       res.send(result);
     });
-
-    // workstatus update
-    // app.patch("/sttafs/:id/workStatus", async (req, res) => {
-    //   const { workStatus } = req.body;
-    //   const { id } = req.params;
-    //   const query = { _id: new ObjectId(id) };
-    //   const updatedocs = {
-    //     $set: {
-    //       workStatus,
-    //     },
-    //   };
-    //   const result = await sttafsCollection.updateOne(query, updatedocs);
-    //   res.send(result);
-    // });
 
     app.get("/sttafs-filter", async (req, res) => {
       const { region, district, category } = req.query;
@@ -380,7 +376,9 @@ async function run() {
       try {
         const email = req.query.email;
 
-        const totalIssues = await issuesCollection.countDocuments({ email });
+        const totalIssues = await issuesCollection.countDocuments({
+          customer_email: email,
+        });
 
         const pendingIssues = await issuesCollection.countDocuments({
           email,
@@ -411,6 +409,18 @@ async function run() {
           status: "rejected",
         });
 
+        const payments = await paymentCollection
+          .find({
+            customer_email: email,
+            paymentStatus: "paid",
+          })
+          .toArray();
+
+        const totalPayments = payments.reduce(
+          (sum, payment) => sum + payment.amount,
+          0
+        );
+
         res.send({
           issues: {
             total: totalIssues,
@@ -420,6 +430,7 @@ async function run() {
             resloved: reslovedIssues,
             closed: closedIssues,
             rejected: rejectedIssues,
+            totalPayments: totalPayments,
           },
         });
       } catch (error) {
@@ -608,6 +619,11 @@ async function run() {
       }
       // console.log("session retrieve ", session);
       return res.send({ success: false });
+    });
+
+    app.get("/payments", async (req, res) => {
+      const result = await paymentCollection.find().toArray();
+      res.send(result);
     });
 
     // Send a ping to confirm a successful connection
