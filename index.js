@@ -4,14 +4,19 @@ const cors = require("cors");
 require("dotenv").config();
 const stripe = require("stripe")(process.env.STRIPE_SECRET);
 
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 300;
 
 // firebase admin
 
 const admin = require("firebase-admin");
 
-const serviceAccount = require("./firebase_key.json");
+// const serviceAccount = require("./firebase_key.json");
 
+const decoded = Buffer.from(process.env.FB_SERVICE_KEY, "base64").toString(
+  "utf8"
+);
+
+const serviceAccount = JSON.parse(decoded);
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
@@ -199,7 +204,7 @@ async function run() {
 
     // latest issues
 
-    app.get("/latestIssues", async (req, res) => {
+    app.get("/latest-issues", async (req, res) => {
       const result = await issuesCollection
         .find()
         .sort({ createAt: -1 })
@@ -293,7 +298,9 @@ async function run() {
     app.post("/users", async (req, res) => {
       const user = req.body;
       const existingUser = await usersCollection.findOne({ email: user.email });
-      if (existingUser) return;
+      if (existingUser) {
+        return res.status(200).send({ message: "Already exists" });
+      }
       const result = await usersCollection.insertOne(user);
       res.send(result);
     });
@@ -424,7 +431,9 @@ async function run() {
         issueId: upvote.issueId,
         citzenEmail: upvote.citzenEmail,
       });
-      if (existingUser) return;
+      if (existingUser) {
+        return res.status(200).send({ message: "Already exists" });
+      }
       const result = await upvotesCollection.insertOne(upvote);
       res.send(result);
     });
@@ -877,10 +886,10 @@ async function run() {
     });
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "✅Pinged your deployment. You successfully connected to MongoDB!"
-    );
+    // await client.db("admin").command({ ping: 1 });
+    // console.log(
+    //   "Pinged your deployment. You successfully connected to MongoDB!"
+    // );
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
@@ -892,6 +901,6 @@ app.get("/", (req, res) => {
   res.send("Hello World!");
 });
 
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`);
-});
+// app.listen(port, () => {
+//   console.log(`Example app listening on port ${port}`);
+// });
