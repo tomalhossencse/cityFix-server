@@ -225,6 +225,7 @@ async function run() {
         updatedBy: {
           role: role,
           email: req.decode_email,
+          name: assignedStaff?.staffName,
         },
         createdAt: new Date(),
       };
@@ -256,6 +257,20 @@ async function run() {
       const existingUser = await usersCollection.findOne({ email: user.email });
       if (existingUser) return;
       const result = await usersCollection.insertOne(user);
+      res.send(result);
+    });
+
+    app.patch("/users/:email", async (req, res) => {
+      const { displayName, photoURL } = req.body;
+      const email = req.params.email;
+      const query = { email };
+      const updateDocs = {
+        $set: {
+          displayName: displayName,
+          photoURL: photoURL,
+        },
+      };
+      const result = await usersCollection.updateOne(query, updateDocs);
       res.send(result);
     });
 
@@ -614,6 +629,7 @@ async function run() {
           issueTitle: paymentInfo.issueTitle,
           trackingId: paymentInfo.trackingId,
           displayName: paymentInfo.displayName,
+          photoURL: paymentInfo.photoURL,
         },
         success_url: `${process.env.SITE_DOMAIN}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${process.env.SITE_DOMAIN}/payment-cancel`,
@@ -645,6 +661,7 @@ async function run() {
           isSubscribed: boostInfo.isSubscribed,
           planType: boostInfo.planType,
           displayName: boostInfo.displayName,
+          photoURL: boostInfo.photoURL,
         },
         success_url: `${process.env.SITE_DOMAIN}/premuim-success?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${process.env.SITE_DOMAIN}/premuim-cancel`,
@@ -697,6 +714,8 @@ async function run() {
         const payment = {
           amount: session.amount_total / 100,
           currency: session.currency,
+          customer_name: session.metadata.displayName,
+          custormer_photo: session.metadata.photoURL,
           customer_email: session.customer_email,
           issueId: session.metadata.issueId,
           issueTitle: session.metadata.issueTitle,
@@ -757,6 +776,7 @@ async function run() {
           displayName: session.metadata.displayName,
           transactionId: session.payment_intent,
           paymentStatus: session.payment_status,
+          photoURL: session.metadata.photoURL,
           paidAt: new Date(),
         };
 
@@ -772,7 +792,19 @@ async function run() {
     });
 
     app.get("/payments", async (req, res) => {
-      const result = await paymentCollection.find().toArray();
+      const result = await paymentCollection
+        .find()
+        .sort({ paidAt: -1 })
+        .toArray();
+      res.send(result);
+    });
+
+    app.get("/latestPayments", async (req, res) => {
+      const result = await paymentCollection
+        .find()
+        .sort({ paidAt: -1 })
+        .limit(4)
+        .toArray();
       res.send(result);
     });
 
