@@ -159,6 +159,15 @@ async function run() {
         .toArray();
       res.send(result);
     });
+    // latest issues
+
+    app.get("/latestIssues", async (req, res) => {
+      const result = await issuesCollection
+        .find()
+        .sort({ createAt: -1 })
+        .toArray();
+      res.send(result);
+    });
 
     // get single issues data
     app.get("/issues/:id", async (req, res) => {
