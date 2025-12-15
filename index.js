@@ -104,19 +104,26 @@ async function run() {
 
     // get issues assigned stuffs
     app.get("/issues/sttafs", async (req, res) => {
-      const { email, status } = req.query;
-      const query = {};
-      if (email) {
-        query["assignedStaff.staffEmail"] = email;
-      } else {
-        query.status = status;
-      }
+      try {
+        const query = {};
+        const { status, priority, email, category } = req.query;
+        if (email) {
+          query["assignedStaff.staffEmail"] = email;
 
-      const result = await issuesCollection
-        .find(query)
-        .sort({ priority: 1, createAt: -1 })
-        .toArray();
-      res.send(result);
+          if (status) query.status = status;
+
+          if (priority) query.priority = priority;
+
+          if (category) query.category = category;
+        }
+        const result = await issuesCollection
+          .find(query)
+          .sort({ priority: 1, createAt: -1 })
+          .toArray();
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ message: "Server error" });
+      }
     });
 
     app.get("/my-issues", verifyFBToken, async (req, res) => {
@@ -427,6 +434,61 @@ async function run() {
         const payments = await paymentCollection
           .find({
             customer_email: email,
+            paymentStatus: "paid",
+          })
+          .toArray();
+
+        const totalPayments = payments.reduce(
+          (sum, payment) => sum + payment.amount,
+          0
+        );
+
+        res.send({
+          issues: {
+            total: totalIssues,
+            pending: pendingIssues,
+            procesing: procesingIssues,
+            working: workingIssues,
+            resloved: reslovedIssues,
+            closed: closedIssues,
+            rejected: rejectedIssues,
+            totalPayments: totalPayments,
+          },
+        });
+      } catch (error) {
+        res.status(500).send({ message: "Dashboard data failed" });
+      }
+    });
+
+    app.get("/adminDashboard/stats", async (req, res) => {
+      try {
+        const totalIssues = await issuesCollection.countDocuments();
+
+        const pendingIssues = await issuesCollection.countDocuments({
+          status: "pending",
+        });
+
+        const procesingIssues = await issuesCollection.countDocuments({
+          status: "in-progress",
+        });
+        const workingIssues = await issuesCollection.countDocuments({
+          status: "working",
+        });
+
+        const reslovedIssues = await issuesCollection.countDocuments({
+          status: "resolved",
+        });
+
+        const closedIssues = await issuesCollection.countDocuments({
+          status: "closed",
+        });
+
+        const rejectedIssues = await issuesCollection.countDocuments({
+          status: "rejected",
+        });
+
+        const payments = await paymentCollection
+          .find({
             paymentStatus: "paid",
           })
           .toArray();
