@@ -391,9 +391,8 @@ async function run() {
     app.get("/dashboard/stats", async (req, res) => {
       try {
         const email = req.query.email;
-
         const totalIssues = await issuesCollection.countDocuments({
-          customer_email: email,
+          email,
         });
 
         const pendingIssues = await issuesCollection.countDocuments({
@@ -447,6 +446,70 @@ async function run() {
             closed: closedIssues,
             rejected: rejectedIssues,
             totalPayments: totalPayments,
+          },
+        });
+      } catch (error) {
+        res.status(500).send({ message: "Dashboard data failed" });
+      }
+    });
+
+    app.get("/staffDashboard/stats", async (req, res) => {
+      try {
+        const email = req.query.email;
+        const issues = await issuesCollection.find().toArray();
+
+        // total assigned
+        const allAssignedIssues = issues.filter(
+          (issue) =>
+            issue.assignedStaff && issue.assignedStaff.staffEmail === email
+        );
+
+        const assignedCount = allAssignedIssues.length;
+
+        // total resloved
+
+        const pendingCount = allAssignedIssues.filter(
+          (issue) => issue.status === "pending"
+        ).length;
+
+        // process
+        const inProcessCount = allAssignedIssues.filter(
+          (issue) => issue.status === "in-progress"
+        ).length;
+
+        const workingCount = allAssignedIssues.filter(
+          (issue) => issue.status === "working"
+        ).length;
+
+        // total resloved
+
+        const resolvedCount = allAssignedIssues.filter(
+          (issue) => issue.status === "resolved"
+        ).length;
+
+        // total resloved
+
+        const closedCount = allAssignedIssues.filter(
+          (issue) => issue.status === "closed"
+        ).length;
+
+        // today task
+
+        const todaysTasks = allAssignedIssues.filter(
+          (issue) => issue.status !== "closed" && issue.status !== "rejected"
+        );
+        const todaysTasksCount = todaysTasks.length;
+
+        res.send({
+          staffEmail: email,
+          issues: {
+            assignedCount,
+            pendingCount,
+            inProcessCount,
+            workingCount,
+            resolvedCount,
+            closedCount,
+            todaysTasksCount,
           },
         });
       } catch (error) {
