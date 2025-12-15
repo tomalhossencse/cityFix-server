@@ -66,6 +66,9 @@ async function run() {
     const usersCollection = cityFixDB.collection("users");
     const sttafsCollection = cityFixDB.collection("sttafs");
     const upvotesCollection = cityFixDB.collection("upvotes");
+    const categoryCollection = cityFixDB.collection("category");
+    const howItWorksStepsCollection = cityFixDB.collection("howItWorksSteps");
+    const featuresCollection = cityFixDB.collection("features");
 
     // issue related apis
     app.post("/issues", async (req, res) => {
@@ -95,6 +98,24 @@ async function run() {
         const result = await issuesCollection
           .find(query)
           .sort({ priority: 1, createAt: -1 })
+          .toArray();
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ message: "Server error" });
+      }
+    });
+
+    app.get("/latestIssues", async (req, res) => {
+      try {
+        const query = {};
+        const { status } = req.query;
+        if (status) {
+          query.status = status;
+        }
+
+        const result = await issuesCollection
+          .find(query)
+          .sort({ createAt: -1, priority: 1 })
           .toArray();
         res.send(result);
       } catch (error) {
@@ -159,6 +180,23 @@ async function run() {
         .toArray();
       res.send(result);
     });
+    // category
+    app.get("/category", async (req, res) => {
+      const result = await categoryCollection.find().toArray();
+      res.send(result);
+    });
+    // features
+    app.get("/features", async (req, res) => {
+      const result = await featuresCollection.find().toArray();
+      res.send(result);
+    });
+
+    // howItWorksSteps
+    app.get("/howItWorksSteps", async (req, res) => {
+      const result = await howItWorksStepsCollection.find().toArray();
+      res.send(result);
+    });
+
     // latest issues
 
     app.get("/latestIssues", async (req, res) => {
@@ -522,6 +560,8 @@ async function run() {
           0
         );
 
+        const totalUsers = await usersCollection.countDocuments({});
+
         res.send({
           issues: {
             total: totalIssues,
@@ -532,6 +572,7 @@ async function run() {
             closed: closedIssues,
             rejected: rejectedIssues,
             totalPayments: totalPayments,
+            totalUsers: totalUsers,
           },
         });
       } catch (error) {
@@ -630,6 +671,7 @@ async function run() {
           trackingId: paymentInfo.trackingId,
           displayName: paymentInfo.displayName,
           photoURL: paymentInfo.photoURL,
+          purpose: "issue",
         },
         success_url: `${process.env.SITE_DOMAIN}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${process.env.SITE_DOMAIN}/payment-cancel`,
@@ -662,6 +704,7 @@ async function run() {
           planType: boostInfo.planType,
           displayName: boostInfo.displayName,
           photoURL: boostInfo.photoURL,
+          purpose: "profile",
         },
         success_url: `${process.env.SITE_DOMAIN}/premuim-success?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${process.env.SITE_DOMAIN}/premuim-cancel`,
@@ -681,9 +724,14 @@ async function run() {
         transactionId,
       });
       if (existingPayment) {
-        return res.send({ success: true, message: "Already paid" });
+        return res.send({
+          success: true,
+          message: "Already paid",
+          transactionId,
+          trackingId: paymentExist.trackingId,
+        });
       }
-
+      const trackingId = session.metadata.trackingId;
       if (session.payment_status === "paid") {
         const id = session.metadata.issueId;
         const query = { _id: new ObjectId(id) };
@@ -723,13 +771,17 @@ async function run() {
           transactionId: session.payment_intent,
           paymentStatus: session.payment_status,
           paidAt: new Date(),
+          purpose: session.metadata.purpose,
         };
 
         const resultPayment = await paymentCollection.insertOne(payment);
         return res.send({
           success: true,
-          modifyStatus: result,
+          modifyParcel: result,
+          trackingId: trackingId,
+          transactionId: session.payment_intent,
           paymentInfo: resultPayment,
+          payment: payment,
         });
       }
       // console.log("session retrieve ", session);
@@ -771,16 +823,18 @@ async function run() {
         const payment = {
           amount: session.amount_total / 100,
           currency: session.currency,
-          email: session.customer_email,
+          customer_email: session.customer_email,
           userId: session.metadata.userId,
-          displayName: session.metadata.displayName,
+          customer_name: session.metadata.displayName,
           transactionId: session.payment_intent,
           paymentStatus: session.payment_status,
-          photoURL: session.metadata.photoURL,
+          custormer_photo: session.metadata.photoURL,
           paidAt: new Date(),
+          purpose: session.metadata.purpose,
         };
 
-        const resultPayment = await PremuimUsersCollection.insertOne(payment);
+        const resultPayment = await paymentCollection.insertOne(payment);
+        // const resultPayment = await PremuimUsersCollection.insertOne(payment);
         return res.send({
           success: true,
           modifyStatus: result,
@@ -792,8 +846,13 @@ async function run() {
     });
 
     app.get("/payments", async (req, res) => {
+      const { purpose } = req.query;
+      const query = {};
+      if (purpose) {
+        query.purpose = purpose;
+      }
       const result = await paymentCollection
-        .find()
+        .find(query)
         .sort({ paidAt: -1 })
         .toArray();
       res.send(result);
@@ -801,6 +860,15 @@ async function run() {
 
     app.get("/latestPayments", async (req, res) => {
       const result = await paymentCollection
+        .find()
+        .sort({ paidAt: -1 })
+        .limit(4)
+        .toArray();
+      res.send(result);
+    });
+
+    app.get("/latestUsers", async (req, res) => {
+      const result = await usersCollection
         .find()
         .sort({ paidAt: -1 })
         .limit(4)
