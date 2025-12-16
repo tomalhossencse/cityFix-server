@@ -46,31 +46,31 @@ const verifyFBToken = async (req, res, next) => {
 };
 
 // verify admin
-const verifyAdmin = async (req, res, next) => {
-  const email = req.decoded_email;
-  const query = { email };
-  const user = await usersCollection.findOne(query);
-  if (!user || user?.role !== "admin") {
-    return res.status(403).send({
-      message: "forbidden access",
-    });
-  }
-  next();
-};
+// const verifyAdmin = async (req, res, next) => {
+//   const email = req.decoded_email;
+//   const query = { email };
+//   const user = await usersCollection.findOne(query);
+//   if (!user || user?.role !== "admin") {
+//     return res.status(403).send({
+//       message: "forbidden access",
+//     });
+//   }
+//   next();
+// };
 
-// verify Staff
+// // verify Staff
 
-const verifyStaff = async (req, res, next) => {
-  const email = req.decoded_email;
-  const query = { email };
-  const user = await usersCollection.findOne(query);
-  if (!user || user?.role !== "staff") {
-    return res.status(403).send({
-      message: "forbidden access",
-    });
-  }
-  next();
-};
+// const verifyStaff = async (req, res, next) => {
+//   const email = req.decoded_email;
+//   const query = { email };
+//   const user = await usersCollection.findOne(query);
+//   if (!user || user?.role !== "staff") {
+//     return res.status(403).send({
+//       message: "forbidden access",
+//     });
+//   }
+//   next();
+// };
 
 //mongodb
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
@@ -237,6 +237,7 @@ async function run() {
       const result = await issuesCollection
         .find()
         .sort({ createAt: -1 })
+        .limit(6)
         .toArray();
       res.send(result);
     });
@@ -287,7 +288,7 @@ async function run() {
 
     // update issue timeLine
 
-    app.patch("/issues/:id/timeline", verifyFBToken, async (req, res) => {
+    app.patch("/issues/:id/timeline", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const { assignedStaff, status, message, role } = req.body;
@@ -560,7 +561,7 @@ async function run() {
       }
     });
 
-    app.get("/adminDashboard/stats", verifyFBToken, async (req, res) => {
+    app.get("/adminDashboard/stats", async (req, res) => {
       try {
         const totalIssues = await issuesCollection.countDocuments();
 
@@ -618,7 +619,7 @@ async function run() {
       }
     });
 
-    app.get("/staffDashboard/stats", verifyFBToken, async (req, res) => {
+    app.get("/staffDashboard/stats", async (req, res) => {
       try {
         const email = req.query.email;
         const issues = await issuesCollection.find().toArray();
