@@ -374,9 +374,14 @@ async function run() {
 
     app.get("/users/:email/role", async (req, res) => {
       const { email } = req.params;
-      query = { email };
+      const query = { email };
       const user = await usersCollection.findOne(query);
-      res.send({ role: user?.role });
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      res.status(200).json({ role: user.role });
     });
 
     app.patch("/users/:id", async (req, res) => {
