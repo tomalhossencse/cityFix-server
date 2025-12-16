@@ -627,63 +627,55 @@ async function run() {
     app.get("/staffDashboard/stats", async (req, res) => {
       try {
         const email = req.query.email;
-        const issues = await issuesCollection.find().toArray();
 
-        // total assigned
-        const allAssignedIssues = issues.filter(
-          (issue) =>
-            issue.assignedStaff && issue.assignedStaff.staffEmail === email
-        );
+        if (!email) {
+          return res.status(400).send({ message: "Email is required" });
+        }
 
-        const assignedCount = allAssignedIssues.length;
+        const assignedIssues = await issuesCollection
+          .find({ "assignedStaff.staffEmail": email })
+          .toArray();
 
-        // total resloved
+        const stats = {
+          assignedCount: assignedIssues.length,
+          pendingCount: 0,
+          inProcessCount: 0,
+          workingCount: 0,
+          resolvedCount: 0,
+          closedCount: 0,
+          todaysTasksCount: 0,
+        };
 
-        const pendingCount = allAssignedIssues.filter(
-          (issue) => issue.status === "pending"
-        ).length;
-
-        // process
-        const inProcessCount = allAssignedIssues.filter(
-          (issue) => issue.status === "in-progress"
-        ).length;
-
-        const workingCount = allAssignedIssues.filter(
-          (issue) => issue.status === "working"
-        ).length;
-
-        // total resloved
-
-        const resolvedCount = allAssignedIssues.filter(
-          (issue) => issue.status === "resolved"
-        ).length;
-
-        // total resloved
-
-        const closedCount = allAssignedIssues.filter(
-          (issue) => issue.status === "closed"
-        ).length;
-
-        // today task
-
-        const todaysTasks = allAssignedIssues.filter(
-          (issue) => issue.status !== "closed" && issue.status !== "rejected"
-        );
-        const todaysTasksCount = todaysTasks.length;
+        assignedIssues.forEach((issue) => {
+          switch (issue.status) {
+            case "pending":
+              stats.pendingCount++;
+              stats.todaysTasksCount++;
+              break;
+            case "in-progress":
+              stats.inProcessCount++;
+              stats.todaysTasksCount++;
+              break;
+            case "working":
+              stats.workingCount++;
+              stats.todaysTasksCount++;
+              break;
+            case "resolved":
+              stats.resolvedCount++;
+              stats.todaysTasksCount++;
+              break;
+            case "closed":
+              stats.closedCount++;
+              break;
+          }
+        });
 
         res.send({
           staffEmail: email,
-          issues: {
-            assignedCount,
-            pendingCount,
-            inProcessCount,
-            workingCount,
-            resolvedCount,
-            closedCount,
-            todaysTasksCount,
-          },
+          issues: stats,
         });
       } catch (error) {
+        console.error(error);
         res.status(500).send({ message: "Dashboard data failed" });
       }
     });
