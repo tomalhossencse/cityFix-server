@@ -495,7 +495,7 @@ async function run() {
 
     // dashboard related apis
 
-    app.get("/dashboard/stats", verifyFBToken, async (req, res) => {
+    app.get("/dashboard/stats", async (req, res) => {
       try {
         const email = req.query.email;
         const totalIssues = await issuesCollection.countDocuments({
