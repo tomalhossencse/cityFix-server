@@ -158,7 +158,7 @@ async function run() {
     });
 
     // get issues assigned stuffs
-    app.get("/issues/sttafs", verifyFBToken, verifyAdmin, async (req, res) => {
+    app.get("/issues/sttafs", verifyFBToken, async (req, res) => {
       try {
         const query = {};
         const { status, priority, email, category } = req.query;
@@ -207,7 +207,7 @@ async function run() {
       }
     });
 
-    app.get("/allIssues", verifyFBToken, verifyAdmin, async (req, res) => {
+    app.get("/allIssues", verifyFBToken, async (req, res) => {
       const result = await issuesCollection
         .find()
         .sort({ priority: 1, createAt: -1 })
@@ -403,7 +403,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/sttafs", verifyFBToken, verifyAdmin, async (req, res) => {
+    app.get("/sttafs", verifyFBToken, async (req, res) => {
       const result = await sttafsCollection.find().toArray();
       res.send(result);
     });
@@ -434,7 +434,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/sttafs-filter", verifyFBToken, verifyAdmin, async (req, res) => {
+    app.get("/sttafs-filter", verifyFBToken, async (req, res) => {
       const { region, district, category } = req.query;
       const query = {};
 
@@ -560,137 +560,127 @@ async function run() {
       }
     });
 
-    app.get(
-      "/adminDashboard/stats",
-      verifyFBToken,
-      verifyAdmin,
-      async (req, res) => {
-        try {
-          const totalIssues = await issuesCollection.countDocuments();
+    app.get("/adminDashboard/stats", verifyFBToken, async (req, res) => {
+      try {
+        const totalIssues = await issuesCollection.countDocuments();
 
-          const pendingIssues = await issuesCollection.countDocuments({
-            status: "pending",
-          });
+        const pendingIssues = await issuesCollection.countDocuments({
+          status: "pending",
+        });
 
-          const procesingIssues = await issuesCollection.countDocuments({
-            status: "in-progress",
-          });
-          const workingIssues = await issuesCollection.countDocuments({
-            status: "working",
-          });
+        const procesingIssues = await issuesCollection.countDocuments({
+          status: "in-progress",
+        });
+        const workingIssues = await issuesCollection.countDocuments({
+          status: "working",
+        });
 
-          const reslovedIssues = await issuesCollection.countDocuments({
-            status: "resolved",
-          });
+        const reslovedIssues = await issuesCollection.countDocuments({
+          status: "resolved",
+        });
 
-          const closedIssues = await issuesCollection.countDocuments({
-            status: "closed",
-          });
+        const closedIssues = await issuesCollection.countDocuments({
+          status: "closed",
+        });
 
-          const rejectedIssues = await issuesCollection.countDocuments({
-            status: "rejected",
-          });
+        const rejectedIssues = await issuesCollection.countDocuments({
+          status: "rejected",
+        });
 
-          const payments = await paymentCollection
-            .find({
-              paymentStatus: "paid",
-            })
-            .toArray();
+        const payments = await paymentCollection
+          .find({
+            paymentStatus: "paid",
+          })
+          .toArray();
 
-          const totalPayments = payments.reduce(
-            (sum, payment) => sum + payment.amount,
-            0
-          );
+        const totalPayments = payments.reduce(
+          (sum, payment) => sum + payment.amount,
+          0
+        );
 
-          const totalUsers = await usersCollection.countDocuments({});
+        const totalUsers = await usersCollection.countDocuments({});
 
-          res.send({
-            issues: {
-              total: totalIssues,
-              pending: pendingIssues,
-              procesing: procesingIssues,
-              working: workingIssues,
-              resloved: reslovedIssues,
-              closed: closedIssues,
-              rejected: rejectedIssues,
-              totalPayments: totalPayments,
-              totalUsers: totalUsers,
-            },
-          });
-        } catch (error) {
-          res.status(500).send({ message: "Dashboard data failed" });
-        }
+        res.send({
+          issues: {
+            total: totalIssues,
+            pending: pendingIssues,
+            procesing: procesingIssues,
+            working: workingIssues,
+            resloved: reslovedIssues,
+            closed: closedIssues,
+            rejected: rejectedIssues,
+            totalPayments: totalPayments,
+            totalUsers: totalUsers,
+          },
+        });
+      } catch (error) {
+        res.status(500).send({ message: "Dashboard data failed" });
       }
-    );
+    });
 
-    app.get(
-      "/staffDashboard/stats",
-      verifyFBToken,
-      verifyStaff,
-      async (req, res) => {
-        try {
-          const email = req.query.email;
-          const issues = await issuesCollection.find().toArray();
+    app.get("/staffDashboard/stats", verifyFBToken, async (req, res) => {
+      try {
+        const email = req.query.email;
+        const issues = await issuesCollection.find().toArray();
 
-          // total assigned
-          const allAssignedIssues = issues.filter(
-            (issue) =>
-              issue.assignedStaff && issue.assignedStaff.staffEmail === email
-          );
+        // total assigned
+        const allAssignedIssues = issues.filter(
+          (issue) =>
+            issue.assignedStaff && issue.assignedStaff.staffEmail === email
+        );
 
-          const assignedCount = allAssignedIssues.length;
+        const assignedCount = allAssignedIssues.length;
 
-          // total resloved
+        // total resloved
 
-          const pendingCount = allAssignedIssues.filter(
-            (issue) => issue.status === "pending"
-          ).length;
+        const pendingCount = allAssignedIssues.filter(
+          (issue) => issue.status === "pending"
+        ).length;
 
-          // process
-          const inProcessCount = allAssignedIssues.filter(
-            (issue) => issue.status === "in-progress"
-          ).length;
+        // process
+        const inProcessCount = allAssignedIssues.filter(
+          (issue) => issue.status === "in-progress"
+        ).length;
 
-          const workingCount = allAssignedIssues.filter(
-            (issue) => issue.status === "working"
-          ).length;
+        const workingCount = allAssignedIssues.filter(
+          (issue) => issue.status === "working"
+        ).length;
 
-          // total resloved
+        // total resloved
 
-          const resolvedCount = allAssignedIssues.filter(
-            (issue) => issue.status === "resolved"
-          ).length;
+        const resolvedCount = allAssignedIssues.filter(
+          (issue) => issue.status === "resolved"
+        ).length;
 
-          // total resloved
+        // total resloved
 
-          const closedCount = allAssignedIssues.filter(
-            (issue) => issue.status === "closed"
-          ).length;
+        const closedCount = allAssignedIssues.filter(
+          (issue) => issue.status === "closed"
+        ).length;
 
-          // today task
+        // today task
 
-          const todaysTasks = allAssignedIssues.filter(
-            (issue) => issue.status !== "closed" && issue.status !== "rejected"
-          );
-          const todaysTasksCount = todaysTasks.length;
+        const todaysTasks = allAssignedIssues.filter(
+          (issue) => issue.status !== "closed" && issue.status !== "rejected"
+        );
+        const todaysTasksCount = todaysTasks.length;
 
-          res.send({
-            staffEmail: email,
-            issues: {
-              assignedCount,
-              pendingCount,
-              inProcessCount,
-              workingCount,
-              resolvedCount,
-              closedCount,
-              todaysTasksCount,
-            },
-          });
-        } catch (error) {
-          res.status(500).send({ message: "Dashboard data failed" });
-        }
+        res.send({
+          staffEmail: email,
+          issues: {
+            assignedCount,
+            pendingCount,
+            inProcessCount,
+            workingCount,
+            resolvedCount,
+            closedCount,
+            todaysTasksCount,
+          },
+        });
+      } catch (error) {
+        res.status(500).send({ message: "Dashboard data failed" });
       }
-    );
+    });
 
     // payment related api
 
