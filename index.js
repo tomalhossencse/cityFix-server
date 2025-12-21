@@ -25,6 +25,53 @@ admin.initializeApp({
 app.use(express.json());
 app.use(cors());
 
+// verify fb token
+
+const verifyFBToken = async (req, res, next) => {
+  const token = req.headers.authorization;
+
+  if (!token) {
+    return res.status(401).send({ message: "unauthorized access" });
+  }
+
+  try {
+    const idToken = token.split(" ")[1];
+    const decode = await admin.auth().verifyIdToken(idToken);
+    req.decode_email = decode.email;
+    // console.log("decode in the token", decode);
+  } catch (error) {
+    return res.status(401).send({ message: "unauthorized access" });
+  }
+  next();
+};
+
+// verify admin
+// const verifyAdmin = async (req, res, next) => {
+//   const email = req.decoded_email;
+//   const query = { email };
+//   const user = await usersCollection.findOne(query);
+//   if (!user || user?.role !== "admin") {
+//     return res.status(403).send({
+//       message: "forbidden access",
+//     });
+//   }
+//   next();
+// };
+
+// verify Staff
+
+// const verifyStaff = async (req, res, next) => {
+//   const email = req.decoded_email;
+//   const query = { email };
+//   const user = await usersCollection.findOne(query);
+//   if (!user || user?.role !== "staff") {
+//     return res.status(403).send({
+//       message: "forbidden access",
+//     });
+//   }
+//   next();
+// };
+
 //mongodb
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.vybtxro.mongodb.net/?appName=Cluster0`;
@@ -56,53 +103,6 @@ async function run() {
     const categoryCollection = cityFixDB.collection("category");
     const howItWorksStepsCollection = cityFixDB.collection("howItWorksSteps");
     const featuresCollection = cityFixDB.collection("features");
-
-    // verify fb token
-
-    const verifyFBToken = async (req, res, next) => {
-      const token = req.headers.authorization;
-
-      if (!token) {
-        return res.status(401).send({ message: "unauthorized access" });
-      }
-
-      try {
-        const idToken = token.split(" ")[1];
-        const decode = await admin.auth().verifyIdToken(idToken);
-        req.decode_email = decode.email;
-        // console.log("decode in the token", decode);
-      } catch (error) {
-        return res.status(401).send({ message: "unauthorized access" });
-      }
-      next();
-    };
-
-    // verify admin
-    // const verifyAdmin = async (req, res, next) => {
-    //   const email = req.decoded_email;
-    //   const query = { email };
-    //   const user = await usersCollection.findOne(query);
-    //   if (!user || user?.role !== "admin") {
-    //     return res.status(403).send({
-    //       message: "forbidden access",
-    //     });
-    //   }
-    //   next();
-    // };
-
-    // verify Staff
-
-    // const verifyStaff = async (req, res, next) => {
-    //   const email = req.decoded_email;
-    //   const query = { email };
-    //   const user = await usersCollection.findOne(query);
-    //   if (!user || user?.role !== "staff") {
-    //     return res.status(403).send({
-    //       message: "forbidden access",
-    //     });
-    //   }
-    //   next();
-    // };
 
     // issue related apis
     app.post("/issues", async (req, res) => {
@@ -169,7 +169,7 @@ async function run() {
       }
     });
 
-    app.get("/issues/sttafs", verifyFBToken, async (req, res) => {
+    app.get("/issues/sttafs", async (req, res) => {
       try {
         const query = {};
         const { status, priority, email, category } = req.query;
@@ -218,7 +218,7 @@ async function run() {
       }
     });
 
-    app.get("/allIssues", verifyFBToken, async (req, res) => {
+    app.get("/allIssues", async (req, res) => {
       const result = await issuesCollection
         .find()
         .sort({ priority: 1, createAt: -1 })
@@ -360,7 +360,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/users", verifyFBToken, async (req, res) => {
+    app.get("/users", async (req, res) => {
       const result = await usersCollection.find().skip(1).toArray();
       res.send(result);
     });
@@ -420,7 +420,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/sttafs", verifyFBToken, async (req, res) => {
+    app.get("/sttafs", async (req, res) => {
       const result = await sttafsCollection.find().toArray();
       res.send(result);
     });
@@ -451,7 +451,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/sttafs-filter", verifyFBToken, async (req, res) => {
+    app.get("/sttafs-filter", async (req, res) => {
       const { region, district, category } = req.query;
       const query = {};
 
