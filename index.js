@@ -25,53 +25,6 @@ admin.initializeApp({
 app.use(express.json());
 app.use(cors());
 
-// verify fb token
-
-const verifyFBToken = async (req, res, next) => {
-  const token = req.headers.authorization;
-
-  if (!token) {
-    return res.status(401).send({ message: "unauthorized access" });
-  }
-
-  try {
-    const idToken = token.split(" ")[1];
-    const decode = await admin.auth().verifyIdToken(idToken);
-    req.decode_email = decode.email;
-    // console.log("decode in the token", decode);
-  } catch (error) {
-    return res.status(401).send({ message: "unauthorized access" });
-  }
-  next();
-};
-
-// verify admin
-// const verifyAdmin = async (req, res, next) => {
-//   const email = req.decoded_email;
-//   const query = { email };
-//   const user = await usersCollection.findOne(query);
-//   if (!user || user?.role !== "admin") {
-//     return res.status(403).send({
-//       message: "forbidden access",
-//     });
-//   }
-//   next();
-// };
-
-// // verify Staff
-
-// const verifyStaff = async (req, res, next) => {
-//   const email = req.decoded_email;
-//   const query = { email };
-//   const user = await usersCollection.findOne(query);
-//   if (!user || user?.role !== "staff") {
-//     return res.status(403).send({
-//       message: "forbidden access",
-//     });
-//   }
-//   next();
-// };
-
 //mongodb
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.vybtxro.mongodb.net/?appName=Cluster0`;
@@ -104,6 +57,53 @@ async function run() {
     const howItWorksStepsCollection = cityFixDB.collection("howItWorksSteps");
     const featuresCollection = cityFixDB.collection("features");
 
+    // verify fb token
+
+    const verifyFBToken = async (req, res, next) => {
+      const token = req.headers.authorization;
+
+      if (!token) {
+        return res.status(401).send({ message: "unauthorized access" });
+      }
+
+      try {
+        const idToken = token.split(" ")[1];
+        const decode = await admin.auth().verifyIdToken(idToken);
+        req.decode_email = decode.email;
+        // console.log("decode in the token", decode);
+      } catch (error) {
+        return res.status(401).send({ message: "unauthorized access" });
+      }
+      next();
+    };
+
+    // verify admin
+    // const verifyAdmin = async (req, res, next) => {
+    //   const email = req.decoded_email;
+    //   const query = { email };
+    //   const user = await usersCollection.findOne(query);
+    //   if (!user || user?.role !== "admin") {
+    //     return res.status(403).send({
+    //       message: "forbidden access",
+    //     });
+    //   }
+    //   next();
+    // };
+
+    // verify Staff
+
+    // const verifyStaff = async (req, res, next) => {
+    //   const email = req.decoded_email;
+    //   const query = { email };
+    //   const user = await usersCollection.findOne(query);
+    //   if (!user || user?.role !== "staff") {
+    //     return res.status(403).send({
+    //       message: "forbidden access",
+    //     });
+    //   }
+    //   next();
+    // };
+
     // issue related apis
     app.post("/issues", async (req, res) => {
       const issue = req.body;
@@ -115,6 +115,7 @@ async function run() {
       try {
         const query = {};
         const { status, priority, category, search } = req.query;
+
         if (search) {
           query.$or = [
             { issueTitle: { $regex: search, $options: "i" } },
@@ -125,20 +126,31 @@ async function run() {
         }
 
         if (status) query.status = status;
-
         if (priority) query.priority = priority;
         if (category) query.category = category;
 
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
+
+        const total = await issuesCollection.countDocuments(query);
+
         const result = await issuesCollection
           .find(query)
+          .skip(skip)
+          .limit(limit)
           .sort({ priority: 1, createAt: -1 })
           .toArray();
-        res.send(result);
+
+        res.send({
+          issues: result,
+          total: total,
+        });
       } catch (error) {
+        console.error("Error fetching issues:", error);
         res.status(500).send({ message: "Server error" });
       }
     });
-
     app.get("/latestIssues", async (req, res) => {
       try {
         const query = {};
@@ -157,7 +169,6 @@ async function run() {
       }
     });
 
-    // get issues assigned stuffs
     app.get("/issues/sttafs", verifyFBToken, async (req, res) => {
       try {
         const query = {};
@@ -349,7 +360,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/users", async (req, res) => {
+    app.get("/users", verifyFBToken, async (req, res) => {
       const result = await usersCollection.find().skip(1).toArray();
       res.send(result);
     });
@@ -501,7 +512,7 @@ async function run() {
 
     // dashboard related apis
 
-    app.get("/dashboard/stats", async (req, res) => {
+    app.get("/dashboard/stats", verifyFBToken, async (req, res) => {
       try {
         const email = req.query.email;
         const totalIssues = await issuesCollection.countDocuments({
@@ -566,7 +577,7 @@ async function run() {
       }
     });
 
-    app.get("/adminDashboard/stats", async (req, res) => {
+    app.get("/adminDashboard/stats", verifyFBToken, async (req, res) => {
       try {
         const totalIssues = await issuesCollection.countDocuments();
 
@@ -624,7 +635,7 @@ async function run() {
       }
     });
 
-    app.get("/staffDashboard/stats", async (req, res) => {
+    app.get("/staffDashboard/stats", verifyFBToken, async (req, res) => {
       try {
         const email = req.query.email;
 
