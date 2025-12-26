@@ -512,7 +512,7 @@ async function run() {
 
     // dashboard related apis
 
-    app.get("/dashboard/stats", async (req, res) => {
+    app.get("/dashboard/stats", verifyFBToken, async (req, res) => {
       try {
         const email = req.query.email;
         const totalIssues = await issuesCollection.countDocuments({
@@ -577,26 +577,30 @@ async function run() {
       }
     });
 
-    app.get("/adminDashboard/stats", async (req, res) => {
+    app.get("/adminDashboard/stats", verifyFBToken, async (req, res) => {
       try {
         const totalIssues = await issuesCollection.countDocuments();
 
-        const pending = await issuesCollection.countDocuments({
+        const pendingIssues = await issuesCollection.countDocuments({
           status: "pending",
         });
-        const processing = await issuesCollection.countDocuments({
+
+        const procesingIssues = await issuesCollection.countDocuments({
           status: "in-progress",
         });
-        const working = await issuesCollection.countDocuments({
+        const workingIssues = await issuesCollection.countDocuments({
           status: "working",
         });
-        const resolved = await issuesCollection.countDocuments({
+
+        const reslovedIssues = await issuesCollection.countDocuments({
           status: "resolved",
         });
-        const closed = await issuesCollection.countDocuments({
+
+        const closedIssues = await issuesCollection.countDocuments({
           status: "closed",
         });
-        const rejected = await issuesCollection.countDocuments({
+
+        const rejectedIssues = await issuesCollection.countDocuments({
           status: "rejected",
         });
 
@@ -607,32 +611,31 @@ async function run() {
           .toArray();
 
         const totalPayments = payments.reduce(
-          (sum, payment) => sum + Number(payment.amount || 0),
+          (sum, payment) => sum + payment.amount,
           0
         );
 
-        const totalUsers = await usersCollection.countDocuments();
+        const totalUsers = await usersCollection.countDocuments({});
 
         res.send({
           issues: {
             total: totalIssues,
-            pending,
-            processing,
-            working,
-            resolved,
-            closed,
-            rejected,
-            totalPayments,
-            totalUsers,
+            pending: pendingIssues,
+            procesing: procesingIssues,
+            working: workingIssues,
+            resloved: reslovedIssues,
+            closed: closedIssues,
+            rejected: rejectedIssues,
+            totalPayments: totalPayments,
+            totalUsers: totalUsers,
           },
         });
       } catch (error) {
-        console.error(error);
         res.status(500).send({ message: "Dashboard data failed" });
       }
     });
 
-    app.get("/staffDashboard/stats", async (req, res) => {
+    app.get("/staffDashboard/stats", verifyFBToken, async (req, res) => {
       try {
         const email = req.query.email;
 
@@ -889,7 +892,7 @@ async function run() {
       return res.send({ success: false });
     });
 
-    app.get("/payments", async (req, res) => {
+    app.get("/payments", verifyFBToken, async (req, res) => {
       const { purpose } = req.query;
       const query = {};
       if (purpose) {
@@ -902,7 +905,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/latestPayments", async (req, res) => {
+    app.get("/latestPayments", verifyFBToken, async (req, res) => {
       const result = await paymentCollection
         .find()
         .sort({ paidAt: -1 })
@@ -911,7 +914,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/latestUsers", async (req, res) => {
+    app.get("/latestUsers", verifyFBToken, async (req, res) => {
       const result = await usersCollection
         .find()
         .sort({ paidAt: -1 })
