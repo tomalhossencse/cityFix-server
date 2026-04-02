@@ -1,29 +1,32 @@
 const express = require("express");
-const app = express();
-const cors = require("cors");
 require("dotenv").config();
+const cors = require("cors");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const admin = require("firebase-admin");
 const stripe = require("stripe")(process.env.STRIPE_SECRET);
-
 const port = process.env.PORT || 3000;
 
-// firebase admin
-
-const admin = require("firebase-admin");
-
-// const serviceAccount = require("./firebase_key.json");
-
 const decoded = Buffer.from(process.env.FB_SERVICE_KEY, "base64").toString(
-  "utf8"
+  "utf8",
 );
 
 const serviceAccount = JSON.parse(decoded);
+
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
 
+const app = express();
+
 // middleware
+app.use(
+  cors({
+    origin: [process.env.SITE_DOMAIN],
+    credentials: true,
+    optionSuccessStatus: 200,
+  }),
+);
 app.use(express.json());
-app.use(cors());
 
 // verify fb token
 
@@ -45,38 +48,9 @@ const verifyFBToken = async (req, res, next) => {
   next();
 };
 
-// verify admin
-// const verifyAdmin = async (req, res, next) => {
-//   const email = req.decoded_email;
-//   const query = { email };
-//   const user = await usersCollection.findOne(query);
-//   if (!user || user?.role !== "admin") {
-//     return res.status(403).send({
-//       message: "forbidden access",
-//     });
-//   }
-//   next();
-// };
-
-// verify Staff
-
-// const verifyStaff = async (req, res, next) => {
-//   const email = req.decoded_email;
-//   const query = { email };
-//   const user = await usersCollection.findOne(query);
-//   if (!user || user?.role !== "staff") {
-//     return res.status(403).send({
-//       message: "forbidden access",
-//     });
-//   }
-//   next();
-// };
-
 //mongodb
-const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.vybtxro.mongodb.net/?appName=Cluster0`;
 
-// Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
@@ -87,8 +61,34 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // role middleware
+
+    // verify admin
+    // const verifyAdmin = async (req, res, next) => {
+    //   const email = req.decoded_email;
+    //   const query = { email };
+    //   const user = await usersCollection.findOne(query);
+    //   if (!user || user?.role !== "admin") {
+    //     return res.status(403).send({
+    //       message: "forbidden access",
+    //     });
+    //   }
+    //   next();
+    // };
+
+    // verify Staff
+
+    // const verifyStaff = async (req, res, next) => {
+    //   const email = req.decoded_email;
+    //   const query = { email };
+    //   const user = await usersCollection.findOne(query);
+    //   if (!user || user?.role !== "staff") {
+    //     return res.status(403).send({
+    //       message: "forbidden access",
+    //     });
+    //   }
+    //   next();
+    // };
 
     // database collecitons
 
@@ -452,7 +452,7 @@ async function run() {
     });
 
     app.get("/sttafs-filter", async (req, res) => {
-      const { region, district, category } = req.query;
+      const { district, category, region } = req.query;
       const query = {};
 
       if (category) {
@@ -557,7 +557,7 @@ async function run() {
 
         const totalPayments = payments.reduce(
           (sum, payment) => sum + payment.amount,
-          0
+          0,
         );
 
         res.send({
@@ -612,7 +612,7 @@ async function run() {
 
         const totalPayments = payments.reduce(
           (sum, payment) => sum + payment.amount,
-          0
+          0,
         );
 
         const totalUsers = await usersCollection.countDocuments({});
@@ -803,7 +803,7 @@ async function run() {
 
         const result = await issuesCollection.updateOne(
           { ...query, paymentStatus: { $ne: "paid" } },
-          update
+          update,
         );
 
         const payment = {
@@ -864,7 +864,7 @@ async function run() {
 
         const result = await usersCollection.updateOne(
           { ...query, isSubscribed: { $ne: true } },
-          update
+          update,
         );
 
         const payment = {
@@ -924,10 +924,10 @@ async function run() {
     });
 
     // Send a ping to confirm a successful connection
-    // await client.db("admin").command({ ping: 1 });
-    // console.log(
-    //   "Pinged your deployment. You successfully connected to MongoDB!"
-    // );
+    await client.db("admin").command({ ping: 1 });
+    console.log(
+      "Pinged your deployment. You successfully connected to MongoDB!",
+    );
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
@@ -939,4 +939,6 @@ app.get("/", (req, res) => {
   res.send("Hello World!");
 });
 
-module.exports = app;
+app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
+});
